@@ -1,0 +1,110 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model User {
+  id                  String          @id @default(uuid())
+  name                String
+  email               String          @unique
+  passwordHash        String
+  avatarUrl           String?
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
+  memberships         GroupMember[]
+  createdGroups       Group[]         @relation("GroupCreator")
+  paidSplits          ExpenseSplit[]  @relation("SplitPaid")
+  owedSplits          ExpenseSplit[]  @relation("SplitOwed")
+  createdExpenses     Expense[]       @relation("ExpenseCreator")
+  sentSettlements     Settlement[]    @relation("SettlementSender")
+  receivedSettlements Settlement[]    @relation("SettlementReceiver")
+  chatMessages        ChatMessage[]
+}
+
+model Group {
+  id          String        @id @default(uuid())
+  name        String
+  description String?
+  avatarUrl   String?
+  createdById String
+  creator     User          @relation("GroupCreator", fields: [createdById], references: [id])
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  members     GroupMember[]
+  expenses    Expense[]
+  settlements Settlement[]
+  messages    ChatMessage[]
+}
+
+model GroupMember {
+  id        String   @id @default(uuid())
+  groupId   String
+  userId    String
+  joinedAt  DateTime @default(now())
+  group     Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, userId])
+}
+
+model Expense {
+  id          String         @id @default(uuid())
+  description String
+  amount      Float
+  date        DateTime       @default(now())
+  category    String         @default("General")
+  createdById String
+  creator     User           @relation("ExpenseCreator", fields: [createdById], references: [id])
+  groupId     String
+  group       Group          @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  splits      ExpenseSplit[]
+  messages    ChatMessage[]
+}
+
+model ExpenseSplit {
+  id         String   @id @default(uuid())
+  expenseId  String
+  expense    Expense  @relation(fields: [expenseId], references: [id], onDelete: Cascade)
+  userId     String
+  user       User     @relation("SplitOwed", fields: [userId], references: [id], onDelete: Cascade)
+  owedAmount Float
+  paidAmount Float
+  paidById   String?
+  paidByUser User?    @relation("SplitPaid", fields: [paidById], references: [id])
+
+  @@unique([expenseId, userId])
+}
+
+model Settlement {
+  id          String   @id @default(uuid())
+  groupId     String
+  group       Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  fromUserId  String
+  fromUser    User     @relation("SettlementSender", fields: [fromUserId], references: [id], onDelete: Cascade)
+  toUserId    String
+  toUser      User     @relation("SettlementReceiver", fields: [toUserId], references: [id], onDelete: Cascade)
+  amount      Float
+  date        DateTime @default(now())
+  createdAt   DateTime @default(now())
+}
+
+model ChatMessage {
+  id          String   @id @default(uuid())
+  message     String
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  groupId     String
+  group       Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  expenseId   String?
+  expense     Expense? @relation(fields: [expenseId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+}
