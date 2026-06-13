@@ -4,7 +4,7 @@ WanderLust is a production-grade, portfolio-ready web application inspired by Sp
 
 The application allows groups (roommates, travel buddies, coworkers) to split expenses under multiple methodologies, discuss bills in real time, and automatically resolve complex transitive debts using a greedy directed graph simplification engine.
 
----
+
 
 ## 🛠️ Technology Stack
 *   **Framework**: Next.js 16 (App Router) with TypeScript
