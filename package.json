@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "ts-node -O \"{\\\"module\\\":\\\"CommonJS\\\"}\" server.ts",
-    "build": "next build",
+    "build": "prisma generate && next build",
     "start": "ts-node -O \"{\\\"module\\\":\\\"CommonJS\\\"}\" server.ts",
     "test": "vitest run",
     "lint": "eslint"
