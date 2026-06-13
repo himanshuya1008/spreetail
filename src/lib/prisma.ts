@@ -1,5 +1,6 @@
 import { PrismaClient } from '../generated/prisma/client';
-import { PrismaLibSql } from '@prisma/adapter-libsql';
+import { PrismaPg } from '@prisma/adapter-pg';
+import { Pool } from 'pg';
 
 declare global {
   // Prevent multiple instances of Prisma Client in development
@@ -18,11 +19,13 @@ if (process.env.NODE_ENV === 'production') {
 }
 
 function createPrismaClient(): PrismaClient {
-  const databaseUrl = process.env.DATABASE_URL || 'file:./dev.db';
+  const databaseUrl = process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/wanderlust?schema=public';
 
-  const adapter = new PrismaLibSql({
-    url: databaseUrl,
+  const pool = new Pool({
+    connectionString: databaseUrl,
   });
+
+  const adapter = new PrismaPg(pool);
 
   return new PrismaClient({ adapter });
 }

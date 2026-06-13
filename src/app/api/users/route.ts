@@ -22,8 +22,8 @@ export async function GET(request: Request) {
         AND: [
           {
             OR: [
-              { name: { contains: query } },
-              { email: { contains: query } }
+              { name: { contains: query, mode: "insensitive" } },
+              { email: { contains: query, mode: "insensitive" } }
             ]
           },
           {
