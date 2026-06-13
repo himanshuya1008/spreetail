@@ -121,6 +121,64 @@ export default function GroupDetailsPage({ params }: { params: Promise<{ id: str
   const [expenseLoading, setExpenseLoading] = useState(false);
   const [expenseError, setExpenseError] = useState<string | null>(null);
 
+  // CSV Import States
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [csvInput, setCsvInput] = useState("");
+  const [importClearExisting, setImportClearExisting] = useState(true);
+  const [importLoading, setImportLoading] = useState(false);
+  const [importError, setImportError] = useState<string | null>(null);
+  const [importReport, setImportReport] = useState<any>(null);
+
+  const handleCsvImportSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setImportError(null);
+    setImportReport(null);
+
+    if (!csvInput.trim()) {
+      setImportError("Please enter or upload valid CSV content");
+      return;
+    }
+
+    setImportLoading(true);
+
+    try {
+      const res = await fetch(`/api/groups/${groupId}/import`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          csvContent: csvInput,
+          clearExisting: importClearExisting
+        })
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to import CSV data");
+      }
+
+      setImportReport(data);
+      fetchGroupDetails();
+    } catch (err: any) {
+      setImportError(err.message || "Failed to import CSV data");
+    } finally {
+      setImportLoading(false);
+    }
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      if (event.target?.result) {
+        setCsvInput(event.target.result as string);
+      }
+    };
+    reader.readAsText(file);
+  };
+
+
   const fetchGroupDetails = async () => {
     try {
       setLoading(true);
@@ -553,6 +611,12 @@ export default function GroupDetailsPage({ params }: { params: Promise<{ id: str
               className="px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-850 hover:bg-slate-850 text-teal-400 hover:text-teal-300 font-medium text-xs transition-colors cursor-pointer"
             >
               Settle Up
+            </button>
+            <button
+              onClick={() => setShowImportModal(true)}
+              className="px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-850 hover:bg-slate-850 text-indigo-400 hover:text-indigo-300 font-medium text-xs transition-colors cursor-pointer"
+            >
+              📂 Import CSV
             </button>
             <button
               onClick={() => setShowExpenseModal(true)}
@@ -1171,6 +1235,187 @@ export default function GroupDetailsPage({ params }: { params: Promise<{ id: str
           </div>
         </div>
       )}
+
+      {/* CSV Ingestion Modal */}
+      {showImportModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4 overflow-y-auto py-8">
+          <div className="w-full max-w-2xl glass-card rounded-2xl p-6 border border-slate-850 relative my-auto">
+            <button
+              onClick={() => {
+                setShowImportModal(false);
+                setImportError(null);
+                setImportReport(null);
+                setCsvInput("");
+              }}
+              className="absolute top-4 right-4 text-slate-400 hover:text-slate-100 text-sm cursor-pointer"
+            >
+              ✕
+            </button>
+            <h2 className="text-xl font-black text-slate-100 tracking-tight mb-4 flex items-center gap-2">
+              <span>📂</span> Spreetail CSV Ingestion Hub
+            </h2>
+
+            {importError && (
+              <div className="mb-4 p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-xs">
+                {importError}
+              </div>
+            )}
+
+            {!importReport ? (
+              <form onSubmit={handleCsvImportSubmit} className="space-y-4">
+                <p className="text-xs text-slate-400 leading-relaxed">
+                  Paste raw CSV text containing column headers (<code>date,description,paid_by,amount,currency,split_type,split_with,split_details,notes</code>) or select a file to ingest expenses and settlements instantly.
+                </p>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
+                    Select CSV File
+                  </label>
+                  <input
+                    type="file"
+                    accept=".csv"
+                    onChange={handleFileChange}
+                    className="w-full text-xs text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-slate-900 file:text-teal-400 hover:file:bg-slate-800 file:cursor-pointer"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
+                    Or Paste CSV Data
+                  </label>
+                  <textarea
+                    rows={8}
+                    value={csvInput}
+                    onChange={(e) => setCsvInput(e.target.value)}
+                    placeholder="date,description,paid_by,amount,currency,split_type,split_with,split_details,notes&#10;01-02-2026,Rent,Aisha,48000,INR,equal,Aisha;Rohan;Priya;Meera,,"
+                    className="w-full px-4 py-2.5 rounded-lg bg-slate-900 border border-slate-800 text-slate-100 placeholder-slate-500 focus:outline-none focus:border-teal-500 text-xs font-mono"
+                  />
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="clearExisting"
+                    checked={importClearExisting}
+                    onChange={(e) => setImportClearExisting(e.target.checked)}
+                    className="w-4 h-4 rounded bg-slate-950 border-slate-850 text-teal-500 focus:ring-0 cursor-pointer"
+                  />
+                  <label htmlFor="clearExisting" className="text-xs text-slate-350 select-none cursor-pointer">
+                    Clear existing expenses/settlements in this group before importing (Idempotent run)
+                  </label>
+                </div>
+
+                <div className="flex gap-3 justify-end pt-4 border-t border-slate-850">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowImportModal(false);
+                      setCsvInput("");
+                    }}
+                    className="px-4 py-2 rounded-lg border border-slate-800 hover:bg-slate-900 text-slate-350 font-medium text-xs transition-colors cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={importLoading}
+                    className="px-5 py-2 rounded-lg bg-teal-600 hover:bg-teal-500 text-white font-medium text-xs transition-colors cursor-pointer disabled:opacity-50 flex items-center gap-1.5"
+                  >
+                    {importLoading ? "Ingesting Data..." : "Run CSV Import"}
+                  </button>
+                </div>
+              </form>
+            ) : (
+              // High-fidelity Import Report Dialog
+              <div className="space-y-6">
+                <div className="p-4 rounded-xl bg-teal-500/10 border border-teal-500/20 flex items-center gap-3">
+                  <span className="text-2xl">🎉</span>
+                  <div>
+                    <h3 className="font-bold text-teal-400 text-sm">Data Ingestion Completed Successfully!</h3>
+                    <p className="text-slate-400 text-xs mt-0.5">Database records updated. Review the anomaly log below.</p>
+                  </div>
+                </div>
+
+                {/* Stat Summary Box */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                  <div className="glass-card p-3 rounded-xl border border-slate-800 text-center">
+                    <p className="text-[10px] text-slate-500 font-semibold uppercase tracking-wider">Total Rows</p>
+                    <p className="text-xl font-extrabold text-slate-200 mt-1">{importReport.stats.totalRows}</p>
+                  </div>
+                  <div className="glass-card p-3 rounded-xl border border-slate-800 text-center">
+                    <p className="text-[10px] text-slate-500 font-semibold uppercase tracking-wider">Imported</p>
+                    <p className="text-xl font-extrabold text-teal-400 mt-1">
+                      {importReport.stats.importedExpenses + importReport.stats.importedSettlements}
+                    </p>
+                  </div>
+                  <div className="glass-card p-3 rounded-xl border border-slate-800 text-center">
+                    <p className="text-[10px] text-slate-500 font-semibold uppercase tracking-wider">Skipped (Duplicates)</p>
+                    <p className="text-xl font-extrabold text-amber-500 mt-1">{importReport.stats.skippedRows}</p>
+                  </div>
+                  <div className="glass-card p-3 rounded-xl border border-slate-800 text-center">
+                    <p className="text-[10px] text-slate-500 font-semibold uppercase tracking-wider">Anomalies Resolved</p>
+                    <p className="text-xl font-extrabold text-indigo-400 mt-1">{importReport.stats.anomaliesFound}</p>
+                  </div>
+                </div>
+
+                {/* Anomaly Log Accordion/Table */}
+                <div className="flex flex-col gap-2.5">
+                  <h4 className="text-xs font-bold text-slate-450 uppercase tracking-wider">Programmatic Anomaly Log</h4>
+                  
+                  {importReport.anomalies.length === 0 ? (
+                    <p className="text-xs text-slate-500 italic py-6 text-center border border-slate-800 rounded-xl bg-slate-900">
+                      No anomalies detected. The dataset was clean.
+                    </p>
+                  ) : (
+                    <div className="border border-slate-850 rounded-xl bg-slate-900 divide-y divide-slate-850 max-h-60 overflow-y-auto">
+                      {importReport.anomalies.map((a: any, idx: number) => {
+                        const isWarning = a.severity === "warning";
+                        const isInfo = a.severity === "info";
+                        return (
+                          <div key={idx} className="p-3 text-xs flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                            <div className="flex items-start gap-2.5">
+                              <span className={`px-2 py-0.5 rounded text-[9px] uppercase tracking-wider font-extrabold shrink-0 mt-0.5 ${
+                                isWarning
+                                  ? "bg-amber-500/10 text-amber-400 border border-amber-500/20"
+                                  : isInfo
+                                  ? "bg-blue-500/10 text-blue-400 border border-blue-500/20"
+                                  : "bg-red-500/10 text-red-400 border border-red-500/20"
+                              }`}>
+                                Row {a.row}
+                              </span>
+                              <div>
+                                <p className="font-semibold text-slate-200">{a.description}</p>
+                                <p className="text-[10px] text-slate-500 mt-0.5">Original value: <code className="font-mono text-slate-400 bg-slate-950 px-1 rounded">{a.originalValue || "N/A"}</code></p>
+                              </div>
+                            </div>
+                            <div className="text-left sm:text-right">
+                              <p className="text-[10px] font-bold text-teal-400">{a.actionTaken}</p>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex justify-end pt-4 border-t border-slate-850">
+                  <button
+                    onClick={() => {
+                      setShowImportModal(false);
+                      setImportReport(null);
+                      setCsvInput("");
+                    }}
+                    className="px-6 py-2 rounded-lg bg-teal-600 hover:bg-teal-500 text-white font-medium text-xs transition-colors cursor-pointer"
+                  >
+                    Done & Refresh Dashboard
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+
