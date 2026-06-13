@@ -15,6 +15,18 @@ The application allows groups (roommates, travel buddies, coworkers) to split ex
 *   **Real-time**: Socket.io (integrated via custom Node.js/Express HTTP server wrapper)
 *   **Validation**: Zod (schema verification on REST API request boundaries)
 *   **Testing**: Vitest (for split calculations and debt simplification correctness)
+*   **CSV Ingestion Engine**: Programmatic parsing, normalisation, and anomaly logs for spreadsheets
+*   **AI Used**: Antigravity (Advanced Agentic Coding assistant developed by Google DeepMind team)
+
+---
+
+## 📋 spreetailed deliverables
+
+As part of the project's data validation and audit goals, the following documents are in the root directory:
+*   [SCOPE.md](file:///c:/Users/himan/OneDrive/Desktop/sprretail/SCOPE.md) — Comprehensive CSV anomaly log (listing data errors, date fixes, USD currency conversions, normalized percentage splits, and database schema mappings).
+*   [DECISIONS.md](file:///c:/Users/himan/OneDrive/Desktop/sprretail/DECISIONS.md) — Technical decision log (detailing parser options, multi-currency strategies, guest user registrations, and transactional rollback behaviors).
+*   [AI_USAGE.md](file:///c:/Users/himan/OneDrive/Desktop/sprretail/AI_USAGE.md) — Prompt record and documented cases where the AI got logic wrong, how we caught it, and how we corrected the compilation or build errors.
+
 
 ---
 
